@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Cooldown Tracker</title>
+
+<style>
+body{
+    font-family: Arial, sans-serif;
+    max-width: 700px;
+    margin: auto;
+    padding: 15px;
+    background: #f5f5f5;
+}
+
+.card{
+    background: white;
+    border-radius: 10px;
+    padding: 15px;
+    margin-bottom: 15px;
+    box-shadow: 0 2px 5px rgba(0,0,0,.1);
+}
+
+h2,h3{
+    margin-top: 0;
+}
+
+input{
+    padding: 6px;
+    margin: 3px;
+}
+
+input[type="text"]{
+    width: 180px;
+}
+
+input[type="number"]{
+    width: 70px;
+}
+
+button{
+    padding: 10px;
+    margin: 5px;
+    cursor: pointer;
+}
+
+.turn{
+    text-align:center;
+    font-size:1.4em;
+    font-weight:bold;
+    margin-bottom:15px;
+}
+
+.skill{
+    border:1px solid #ddd;
+    border-radius:8px;
+    padding:12px;
+    margin-bottom:12px;
+}
+
+.ready{
+    color:green;
+    font-weight:bold;
+}
+
+.cooldown{
+    color:#d32f2f;
+    font-weight:bold;
+}
+
+.actions{
+    text-align:center;
+}
+
+.config-row{
+    margin-bottom:10px;
+}
+
+.barra{
+    font-size:1.3em;
+    letter-spacing:2px;
+    font-family: monospace;
+    margin:8px 0;
+    user-select:none;
+}
+
+.verde{
+    color:#2e7d32;
+}
+
+.amarillo{
+    color:#f9a825;
+}
+
+.rojo{
+    color:#c62828;
+}
+</style>
+</head>
+<body>
+
+<div class="card">
+
+    <h2>Configuración</h2>
+
+    <div class="config-row">
+        <label>Personaje:</label>
+        <input
+            type="text"
+            id="characterName"
+            placeholder="Nombre del personaje">
+    </div>
+
+    <hr>
+
+    <div class="config-row">
+        <input type="text" id="name1" placeholder="Habilidad 1">
+        CD:
+        <input type="number" id="max1" min="0" value="0">
+    </div>
+
+    <div class="config-row">
+        <input type="text" id="name2" placeholder="Habilidad 2">
+        CD:
+        <input type="number" id="max2" min="0" value="0">
+    </div>
+
+    <div class="config-row">
+        <input type="text" id="name3" placeholder="Habilidad 3">
+        CD:
+        <input type="number" id="max3" min="0" value="0">
+    </div>
+
+    <div class="actions">
+        <button onclick="guardarConfiguracion()">
+            Guardar / Cambiar Personaje
+        </button>
+    </div>
+
+</div>
+
+<div class="card">
+
+    <h2 id="personajeTitulo">
+        Sin personaje
+    </h2>
+
+    <div class="turn">
+        Turno: <span id="turno">0</span>
+    </div>
+
+    <div id="skills"></div>
+
+    <div class="actions">
+
+        <button onclick="siguienteTurno()">
+            Empieza mi turno
+        </button>
+
+        <button onclick="deshacerTurno()">
+            Deshacer turno
+        </button>
+
+        <button onclick="reiniciarCooldowns()">
+            Reiniciar cooldowns
+        </button>
+
+    </div>
+
+</div>
+
+<script>
+
+let estado = {
+    personaje: "",
+    turno: 0,
+    historial: [],
+    habilidades: [
+        {
+            nombre:"Habilidad 1",
+            max:0,
+            actual:0
+        },
+        {
+            nombre:"Habilidad 2",
+            max:0,
+            actual:0
+        },
+        {
+            nombre:"Habilidad 3",
+            max:0,
+            actual:0
+        }
+    ]
+};
+
+function clonarEstado(){
+    return JSON.parse(JSON.stringify(estado));
+}
+
+function guardarEstado(){
+    localStorage.setItem(
+        "cooldownTracker",
+        JSON.stringify(estado)
+    );
+}
+
+function cargarEstado(){
+
+    const guardado =
+        localStorage.getItem("cooldownTracker");
+
+    if(guardado){
+        estado = JSON.parse(guardado);
+    }
+
+    document.getElementById("characterName").value =
+        estado.personaje || "";
+
+    document.getElementById("name1").value =
+        estado.habilidades[0].nombre;
+
+    document.getElementById("name2").value =
+        estado.habilidades[1].nombre;
+
+    document.getElementById("name3").value =
+        estado.habilidades[2].nombre;
+
+    document.getElementById("max1").value =
+        estado.habilidades[0].max;
+
+    document.getElementById("max2").value =
+        estado.habilidades[1].max;
+
+    document.getElementById("max3").value =
+        estado.habilidades[2].max;
+
+    render();
+}
+
+function guardarConfiguracion(){
+
+    if(
+        !confirm(
+            "¿Seguro que quieres cambiar la configuración? Se reiniciarán el turno y los cooldowns."
+        )
+    ){
+        return;
+    }
+	estado.personaje =
+        document.getElementById("characterName").value
+        || "Personaje";
+
+    estado.turno = 0;
+    estado.historial = [];
+
+    estado.habilidades = [
+
+        {
+            nombre:
+                document.getElementById("name1").value
+                || "Habilidad 1",
+
+            max:Number(
+                document.getElementById("max1").value
+            ),
+
+            actual:0
+        },
+
+        {
+            nombre:
+                document.getElementById("name2").value
+                || "Habilidad 2",
+
+            max:Number(
+                document.getElementById("max2").value
+            ),
+
+            actual:0
+        },
+
+        {
+            nombre:
+                document.getElementById("name3").value
+                || "Habilidad 3",
+
+            max:Number(
+                document.getElementById("max3").value
+            ),
+
+            actual:0
+        }
+    ];
+
+    guardarEstado();
+    render();
+}
+
+function guardarHistorial(){
+
+    estado.historial.push(
+        clonarEstado()
+    );
+
+    if(estado.historial.length > 50){
+        estado.historial.shift();
+    }
+}
+
+function usarHabilidad(indice){
+
+    const habilidad =
+        estado.habilidades[indice];
+
+    if(habilidad.actual !== 0){
+        return;
+    }
+
+    guardarHistorial();
+
+    habilidad.actual =
+        habilidad.max;
+
+    guardarEstado();
+    render();
+}
+
+function siguienteTurno(){
+
+    guardarHistorial();
+
+    estado.turno++;
+
+    estado.habilidades.forEach(h => {
+
+        if(h.actual > 0){
+            h.actual--;
+        }
+
+    });
+
+    guardarEstado();
+    render();
+}
+
+function deshacerTurno(){
+
+    if(estado.historial.length === 0){
+        return;
+    }
+
+    estado =
+        estado.historial.pop();
+
+    guardarEstado();
+    render();
+}
+
+function reiniciarCooldowns(){
+
+    guardarHistorial();
+
+    estado.habilidades.forEach(h => {
+        h.actual = 0;
+    });
+
+    guardarEstado();
+    render();
+}
+
+function crearBarra(actual,max){
+
+    if(max === 0){
+        return "";
+    }
+
+    let resultado = "";
+
+    for(let i=0;i<max;i++){
+
+        if(i < actual){
+            resultado += "■";
+        }
+        else{
+            resultado += "□";
+        }
+    }
+
+    return resultado;
+}
+
+function obtenerColor(actual,max){
+
+    if(max === 0 || actual === 0){
+        return "verde";
+    }
+
+    const porcentaje =
+        (actual/max) * 100;
+
+    if(porcentaje >= 66){
+        return "rojo";
+    }
+
+    if(porcentaje >= 33){
+        return "amarillo";
+    }
+
+    return "verde";
+}
+
+function render(){
+
+    document.getElementById("turno").textContent =
+        estado.turno;
+
+    document.getElementById(
+        "personajeTitulo"
+    ).textContent =
+        estado.personaje || "Sin personaje";
+
+    let html = "";
+
+    estado.habilidades.forEach(
+        (h,index)=>{
+
+        const disponible =
+            h.actual === 0;
+
+        html += `
+        <div class="skill">
+
+            <h3>${h.nombre}</h3>
+
+            <p class="${
+                disponible
+                ? "ready"
+                : "cooldown"
+            }">
+
+                Cooldown:
+                ${h.actual}/${h.max}
+
+            </p>
+
+            ${
+                h.max > 0
+                ?
+                `<div class="barra ${obtenerColor(h.actual,h.max)}">
+                    ${crearBarra(h.actual,h.max)}
+                </div>`
+                :
+                ''
+            }
+
+            ${
+                disponible
+                ?
+                `<p class="ready">
+                    Disponible
+                </p>`
+                :
+                `<p>
+                    Disponible en
+                    ${h.actual}
+                    turno${h.actual !== 1 ? 's' : ''}
+                </p>`
+            }
+
+            <button
+                onclick="usarHabilidad(${index})"
+                ${!disponible ? "disabled" : ""}
+            >
+                Usar habilidad
+            </button>
+
+        </div>
+        `;
+    });
+
+    document.getElementById("skills")
+        .innerHTML = html;
+}
+
+cargarEstado();
+
+</script>
+
+</body>
+</html>
