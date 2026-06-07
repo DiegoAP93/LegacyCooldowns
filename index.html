@@ -3,491 +3,287 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
 <title>Cooldown Tracker</title>
-
 <style>
-body{
-    font-family: Arial, sans-serif;
-    max-width: 700px;
-    margin: auto;
-    padding: 15px;
-    background: #f5f5f5;
-}
-
-.card{
-    background: white;
-    border-radius: 10px;
-    padding: 15px;
-    margin-bottom: 15px;
-    box-shadow: 0 2px 5px rgba(0,0,0,.1);
-}
-
-h2,h3{
-    margin-top: 0;
-}
-
-input{
-    padding: 6px;
-    margin: 3px;
-}
-
-input[type="text"]{
-    width: 180px;
-}
-
-input[type="number"]{
-    width: 70px;
-}
-
-button{
-    padding: 10px;
-    margin: 5px;
-    cursor: pointer;
-}
-
-.turn{
-    text-align:center;
-    font-size:1.4em;
-    font-weight:bold;
-    margin-bottom:15px;
-}
-
-.skill{
-    border:1px solid #ddd;
-    border-radius:8px;
-    padding:12px;
-    margin-bottom:12px;
-}
-
-.ready{
-    color:green;
-    font-weight:bold;
-}
-
-.cooldown{
-    color:#d32f2f;
-    font-weight:bold;
-}
-
-.actions{
-    text-align:center;
-}
-
-.config-row{
-    margin-bottom:10px;
-}
-
-.barra{
-    font-size:1.3em;
-    letter-spacing:2px;
-    font-family: monospace;
-    margin:8px 0;
-    user-select:none;
-}
-
-.verde{
-    color:#2e7d32;
-}
-
-.amarillo{
-    color:#f9a825;
-}
-
-.rojo{
-    color:#c62828;
-}
+body{font-family:Arial,sans-serif;max-width:800px;margin:auto;padding:15px;background:#f5f5f5}
+.card{background:white;border-radius:10px;padding:15px;margin-bottom:15px;box-shadow:0 2px 5px rgba(0,0,0,.1)}
+input{padding:6px;margin:3px}
+input[type=text]{width:180px}
+input[type=number]{width:70px}
+button{padding:8px 10px;margin:4px;cursor:pointer}
+.skill{border:1px solid #ddd;border-radius:8px;padding:12px;margin-bottom:10px}
+.turn{text-align:center;font-size:1.4em;font-weight:bold}
+.ready{color:#2e7d32;font-weight:bold}
+.cooldown{color:#c62828;font-weight:bold}
+.barra{font-family:monospace;font-size:1.2em;letter-spacing:1px;margin:6px 0}
+.verde{color:#2e7d32}.amarillo{color:#f9a825}.rojo{color:#c62828}
+.actions{text-align:center}
 </style>
 </head>
 <body>
 
 <div class="card">
+<h2>Configuración</h2>
 
-    <h2>Configuración</h2>
+<p>Personaje:
+<input type="text" id="characterName" placeholder="Nombre del personaje">
+</p>
 
-    <div class="config-row">
-        <label>Personaje:</label>
-        <input
-            type="text"
-            id="characterName"
-            placeholder="Nombre del personaje">
-    </div>
+<p><input type="text" id="name1" placeholder="Habilidad 1"> CD:
+<input type="number" id="max1" min="0" value="0"></p>
 
-    <hr>
+<p><input type="text" id="name2" placeholder="Habilidad 2"> CD:
+<input type="number" id="max2" min="0" value="0"></p>
 
-    <div class="config-row">
-        <input type="text" id="name1" placeholder="Habilidad 1">
-        CD:
-        <input type="number" id="max1" min="0" value="0">
-    </div>
+<p><input type="text" id="name3" placeholder="Habilidad 3"> CD:
+<input type="number" id="max3" min="0" value="0"></p>
 
-    <div class="config-row">
-        <input type="text" id="name2" placeholder="Habilidad 2">
-        CD:
-        <input type="number" id="max2" min="0" value="0">
-    </div>
+<p>Definitiva:
+<select id="ultimateMax">
+<option value="0">No tiene</option>
+<option value="8">8 cargas</option>
+<option value="16">16 cargas</option>
+</select>
+</p>
 
-    <div class="config-row">
-        <input type="text" id="name3" placeholder="Habilidad 3">
-        CD:
-        <input type="number" id="max3" min="0" value="0">
-    </div>
-
-    <div class="actions">
-        <button onclick="guardarConfiguracion()">
-            Guardar / Cambiar Personaje
-        </button>
-    </div>
-
+<div class="actions">
+<button onclick="guardarConfiguracion()">Guardar / Cambiar Personaje</button>
+</div>
 </div>
 
 <div class="card">
+<h2 id="personajeTitulo">Sin personaje</h2>
 
-    <h2 id="personajeTitulo">
-        Sin personaje
-    </h2>
+<div class="turn">
+Turno: <span id="turno">0</span>
+</div>
 
-    <div class="turn">
-        Turno: <span id="turno">0</span>
-    </div>
+<div id="skills"></div>
 
-    <div id="skills"></div>
+<div id="ultimateSection"></div>
 
-    <div class="actions">
-
-        <button onclick="siguienteTurno()">
-            Empieza mi turno
-        </button>
-
-        <button onclick="deshacerTurno()">
-            Deshacer turno
-        </button>
-
-        <button onclick="reiniciarCooldowns()">
-            Reiniciar cooldowns
-        </button>
-
-    </div>
-
+<div class="actions">
+<button onclick="siguienteTurno()">Empieza mi turno</button>
+<button onclick="deshacerAccion()">Deshacer acción</button>
+<button onclick="reiniciarCooldowns()">Reiniciar cooldowns</button>
+</div>
 </div>
 
 <script>
-
-let estado = {
-    personaje: "",
-    turno: 0,
-    historial: [],
-    habilidades: [
-        {
-            nombre:"Habilidad 1",
-            max:0,
-            actual:0
-        },
-        {
-            nombre:"Habilidad 2",
-            max:0,
-            actual:0
-        },
-        {
-            nombre:"Habilidad 3",
-            max:0,
-            actual:0
-        }
-    ]
+let estado={
+personaje:"",
+turno:0,
+historial:[],
+habilidades:[
+{nombre:"Habilidad 1",max:0,actual:0},
+{nombre:"Habilidad 2",max:0,actual:0},
+{nombre:"Habilidad 3",max:0,actual:0}
+],
+definitiva:{max:0,actual:0}
 };
 
-function clonarEstado(){
-    return JSON.parse(JSON.stringify(estado));
-}
+function clonarEstado(){return JSON.parse(JSON.stringify(estado));}
 
 function guardarEstado(){
-    localStorage.setItem(
-        "cooldownTracker",
-        JSON.stringify(estado)
-    );
+localStorage.setItem("cooldownTracker",JSON.stringify(estado));
+}
+
+function guardarHistorial(){
+estado.historial.push(clonarEstado());
+if(estado.historial.length>100) estado.historial.shift();
+}
+
+function crearBarra(actual,max){
+if(max===0) return "";
+let r="";
+for(let i=0;i<max;i++) r += i<actual ? "■":"□";
+return r;
+}
+
+function colorBarra(actual,max){
+if(actual===0) return "verde";
+let p=(actual/max)*100;
+if(p>=66) return "rojo";
+if(p>=33) return "amarillo";
+return "verde";
 }
 
 function cargarEstado(){
+const g=localStorage.getItem("cooldownTracker");
+if(g) estado=JSON.parse(g);
 
-    const guardado =
-        localStorage.getItem("cooldownTracker");
+characterName.value=estado.personaje||"";
+name1.value=estado.habilidades[0].nombre;
+name2.value=estado.habilidades[1].nombre;
+name3.value=estado.habilidades[2].nombre;
+max1.value=estado.habilidades[0].max;
+max2.value=estado.habilidades[1].max;
+max3.value=estado.habilidades[2].max;
+ultimateMax.value=estado.definitiva.max;
 
-    if(guardado){
-        estado = JSON.parse(guardado);
-    }
-
-    document.getElementById("characterName").value =
-        estado.personaje || "";
-
-    document.getElementById("name1").value =
-        estado.habilidades[0].nombre;
-
-    document.getElementById("name2").value =
-        estado.habilidades[1].nombre;
-
-    document.getElementById("name3").value =
-        estado.habilidades[2].nombre;
-
-    document.getElementById("max1").value =
-        estado.habilidades[0].max;
-
-    document.getElementById("max2").value =
-        estado.habilidades[1].max;
-
-    document.getElementById("max3").value =
-        estado.habilidades[2].max;
-
-    render();
+render();
 }
 
 function guardarConfiguracion(){
 
-    if(
-        !confirm(
-            "¿Seguro que quieres cambiar la configuración? Se reiniciarán el turno y los cooldowns."
-        )
-    ){
-        return;
-    }
-	estado.personaje =
-        document.getElementById("characterName").value
-        || "Personaje";
+if(!confirm("¿Seguro? Se reiniciarán turno, cooldowns y definitiva.")) return;
 
-    estado.turno = 0;
-    estado.historial = [];
+estado.personaje=characterName.value||"Personaje";
+estado.turno=0;
+estado.historial=[];
 
-    estado.habilidades = [
+estado.habilidades=[
+{nombre:name1.value||"Habilidad 1",max:Number(max1.value),actual:0},
+{nombre:name2.value||"Habilidad 2",max:Number(max2.value),actual:0},
+{nombre:name3.value||"Habilidad 3",max:Number(max3.value),actual:0}
+];
 
-        {
-            nombre:
-                document.getElementById("name1").value
-                || "Habilidad 1",
+estado.definitiva={
+max:Number(ultimateMax.value),
+actual:0
+};
 
-            max:Number(
-                document.getElementById("max1").value
-            ),
-
-            actual:0
-        },
-
-        {
-            nombre:
-                document.getElementById("name2").value
-                || "Habilidad 2",
-
-            max:Number(
-                document.getElementById("max2").value
-            ),
-
-            actual:0
-        },
-
-        {
-            nombre:
-                document.getElementById("name3").value
-                || "Habilidad 3",
-
-            max:Number(
-                document.getElementById("max3").value
-            ),
-
-            actual:0
-        }
-    ];
-
-    guardarEstado();
-    render();
+guardarEstado();
+render();
 }
 
-function guardarHistorial(){
-
-    estado.historial.push(
-        clonarEstado()
-    );
-
-    if(estado.historial.length > 50){
-        estado.historial.shift();
-    }
-}
-
-function usarHabilidad(indice){
-
-    const habilidad =
-        estado.habilidades[indice];
-
-    if(habilidad.actual !== 0){
-        return;
-    }
-
-    guardarHistorial();
-
-    habilidad.actual =
-        habilidad.max;
-
-    guardarEstado();
-    render();
+function usarHabilidad(i){
+if(estado.habilidades[i].actual!==0) return;
+guardarHistorial();
+estado.habilidades[i].actual=estado.habilidades[i].max;
+guardarEstado(); render();
 }
 
 function siguienteTurno(){
-
-    guardarHistorial();
-
-    estado.turno++;
-
-    estado.habilidades.forEach(h => {
-
-        if(h.actual > 0){
-            h.actual--;
-        }
-
-    });
-
-    guardarEstado();
-    render();
-}
-
-function deshacerTurno(){
-
-    if(estado.historial.length === 0){
-        return;
-    }
-
-    estado =
-        estado.historial.pop();
-
-    guardarEstado();
-    render();
+guardarHistorial();
+estado.turno++;
+estado.habilidades.forEach(h=>{
+if(h.actual>0) h.actual--;
+});
+guardarEstado(); render();
 }
 
 function reiniciarCooldowns(){
-
-    guardarHistorial();
-
-    estado.habilidades.forEach(h => {
-        h.actual = 0;
-    });
-
-    guardarEstado();
-    render();
+guardarHistorial();
+estado.habilidades.forEach(h=>h.actual=0);
+guardarEstado(); render();
 }
 
-function crearBarra(actual,max){
-
-    if(max === 0){
-        return "";
-    }
-
-    let resultado = "";
-
-    for(let i=0;i<max;i++){
-
-        if(i < actual){
-            resultado += "■";
-        }
-        else{
-            resultado += "□";
-        }
-    }
-
-    return resultado;
+function deshacerAccion(){
+if(!estado.historial.length) return;
+estado=estado.historial.pop();
+guardarEstado(); render();
 }
 
-function obtenerColor(actual,max){
+function añadirCarga(c){
+if(estado.definitiva.max===0) return;
+guardarHistorial();
+estado.definitiva.actual=Math.min(
+estado.definitiva.actual+c,
+estado.definitiva.max
+);
+guardarEstado(); render();
+}
 
-    if(max === 0 || actual === 0){
-        return "verde";
-    }
-
-    const porcentaje =
-        (actual/max) * 100;
-
-    if(porcentaje >= 66){
-        return "rojo";
-    }
-
-    if(porcentaje >= 33){
-        return "amarillo";
-    }
-
-    return "verde";
+function lanzarDefinitiva(){
+guardarHistorial();
+estado.definitiva.actual=0;
+guardarEstado(); render();
 }
 
 function render(){
 
-    document.getElementById("turno").textContent =
-        estado.turno;
+turno.textContent=estado.turno;
+personajeTitulo.textContent=estado.personaje||"Sin personaje";
 
-    document.getElementById(
-        "personajeTitulo"
-    ).textContent =
-        estado.personaje || "Sin personaje";
+let html="";
 
-    let html = "";
+estado.habilidades.forEach((h,i)=>{
+const disponible=h.actual===0;
 
-    estado.habilidades.forEach(
-        (h,index)=>{
+html+=`
+<div class="skill">
+<h3>${h.nombre}</h3>
 
-        const disponible =
-            h.actual === 0;
+<p class="${disponible?'ready':'cooldown'}">
+Cooldown: ${h.actual}/${h.max}
+</p>
 
-        html += `
-        <div class="skill">
+${h.max>0?
+`<div class="barra ${colorBarra(h.actual,h.max)}">
+${crearBarra(h.actual,h.max)}
+</div>`:''}
 
-            <h3>${h.nombre}</h3>
+<p>
+${disponible
+?'Disponible'
+:`Disponible en ${h.actual} turno${h.actual!==1?'s':''}`}
+</p>
 
-            <p class="${
-                disponible
-                ? "ready"
-                : "cooldown"
-            }">
+<button onclick="usarHabilidad(${i})"
+${!disponible?'disabled':''}>
+Usar habilidad
+</button>
+</div>`;
+});
 
-                Cooldown:
-                ${h.actual}/${h.max}
+skills.innerHTML=html;
 
-            </p>
+let ult="";
 
-            ${
-                h.max > 0
-                ?
-                `<div class="barra ${obtenerColor(h.actual,h.max)}">
-                    ${crearBarra(h.actual,h.max)}
-                </div>`
-                :
-                ''
-            }
+if(estado.definitiva.max>0){
 
-            ${
-                disponible
-                ?
-                `<p class="ready">
-                    Disponible
-                </p>`
-                :
-                `<p>
-                    Disponible en
-                    ${h.actual}
-                    turno${h.actual !== 1 ? 's' : ''}
-                </p>`
-            }
+const a=estado.definitiva.actual;
+const m=estado.definitiva.max;
 
-            <button
-                onclick="usarHabilidad(${index})"
-                ${!disponible ? "disabled" : ""}
-            >
-                Usar habilidad
-            </button>
+ult+=`
+<div class="skill">
+<h3>Definitiva</h3>
 
-        </div>
-        `;
-    });
+<p><strong>${a}/${m}</strong></p>
 
-    document.getElementById("skills")
-        .innerHTML = html;
+<div class="barra ${colorBarra(a,m)}">
+${crearBarra(a,m)}
+</div>
+
+<button onclick="añadirCarga(1)">+1</button>
+<button onclick="añadirCarga(2)">+2</button>
+<button onclick="añadirCarga(3)">+3</button>
+`;
+
+if(m===8){
+
+if(a>=8){
+ult+=`<p class="ready">Lista para usar</p>
+<button onclick="lanzarDefinitiva()">Lanzar Definitiva</button>`;
+}else{
+ult+=`<p>Faltan ${8-a} cargas</p>`;
+}
+
+}else{
+
+if(a>=8){
+ult+=`<p class="ready">Definitiva disponible</p>
+<button onclick="lanzarDefinitiva()">Lanzar Definitiva</button>`;
+}else{
+ult+=`<p>Faltan ${8-a} cargas para la Definitiva</p>`;
+}
+
+if(a>=16){
+ult+=`<p class="ready">Definitiva Mejorada disponible</p>
+<button onclick="lanzarDefinitiva()">Lanzar Definitiva Mejorada</button>`;
+}else{
+ult+=`<p>Faltan ${16-a} cargas para la Mejorada</p>`;
+}
+}
+
+ult+=`</div>`;
+}
+
+ultimateSection.innerHTML=ult;
 }
 
 cargarEstado();
-
 </script>
-
 </body>
 </html>
