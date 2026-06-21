@@ -73,7 +73,7 @@ Turno: <span id="turno">0</span>
 let estado={
 personaje:"",
 turno:0,
-historial:[],
+ultimoEstado:null,
 habilidades:[
 {nombre:"Habilidad 1",max:0,actual:0},
 {nombre:"Habilidad 2",max:0,actual:0},
@@ -82,15 +82,30 @@ habilidades:[
 definitiva:{max:0,actual:0}
 };
 
-function clonarEstado(){return JSON.parse(JSON.stringify(estado));}
-
-function guardarEstado(){
-localStorage.setItem("cooldownTracker",JSON.stringify(estado));
+function clonarEstado(){
+return {
+turno: estado.turno,
+habilidades: structuredClone(estado.habilidades),
+definitiva: structuredClone(estado.definitiva)
+};
 }
 
-function guardarHistorial(){
-estado.historial.push(clonarEstado());
-if(estado.historial.length>100) estado.historial.shift();
+function guardarEstado(){
+const datos={
+personaje:estado.personaje,
+habilidades:estado.habilidades.map(h=>({
+nombre:h.nombre,
+max:h.max
+})),
+definitiva:{
+max:estado.definitiva.max
+}
+};
+localStorage.setItem("cooldownTracker",JSON.stringify(datos));
+}
+
+function guardarUltimoEstado(){
+estado.ultimoEstado=clonarEstado();
 }
 
 function crearBarra(actual,max){
@@ -110,7 +125,23 @@ return "verde";
 
 function cargarEstado(){
 const g=localStorage.getItem("cooldownTracker");
-if(g) estado=JSON.parse(g);
+
+if(g){
+const datos=JSON.parse(g);
+
+estado.personaje=datos.personaje||"";
+estado.habilidades=(datos.habilidades||estado.habilidades).map(h=>({
+nombre:h.nombre,
+max:h.max,
+actual:0
+}));
+estado.definitiva={
+max:datos.definitiva?.max||0,
+actual:0
+};
+estado.turno=0;
+estado.ultimoEstado=null;
+}
 
 characterName.value=estado.personaje||"";
 name1.value=estado.habilidades[0].nombre;
@@ -130,7 +161,7 @@ if(!confirm("¿Seguro? Se reiniciarán turno, cooldowns y definitiva.")) return;
 
 estado.personaje=characterName.value||"Personaje";
 estado.turno=0;
-estado.historial=[];
+estado.ultimoEstado=null;
 
 estado.habilidades=[
 {nombre:name1.value||"Habilidad 1",max:Number(max1.value),actual:0},
@@ -149,13 +180,13 @@ render();
 
 function usarHabilidad(i){
 if(estado.habilidades[i].actual!==0) return;
-guardarHistorial();
+guardarUltimoEstado();
 estado.habilidades[i].actual=estado.habilidades[i].max;
 guardarEstado(); render();
 }
 
 function siguienteTurno(){
-guardarHistorial();
+guardarUltimoEstado();
 estado.turno++;
 estado.habilidades.forEach(h=>{
 if(h.actual>0) h.actual--;
@@ -164,20 +195,25 @@ guardarEstado(); render();
 }
 
 function reiniciarCooldowns(){
-guardarHistorial();
+guardarUltimoEstado();
 estado.habilidades.forEach(h=>h.actual=0);
 guardarEstado(); render();
 }
 
 function deshacerAccion(){
-if(!estado.historial.length) return;
-estado=estado.historial.pop();
-guardarEstado(); render();
+if(!estado.ultimoEstado) return;
+
+estado.turno=estado.ultimoEstado.turno;
+estado.habilidades=structuredClone(estado.ultimoEstado.habilidades);
+estado.definitiva=structuredClone(estado.ultimoEstado.definitiva);
+
+estado.ultimoEstado=null;
+render();
 }
 
 function añadirCarga(c){
 if(estado.definitiva.max===0) return;
-guardarHistorial();
+guardarUltimoEstado();
 estado.definitiva.actual=Math.min(
 estado.definitiva.actual+c,
 estado.definitiva.max
@@ -186,7 +222,7 @@ guardarEstado(); render();
 }
 
 function lanzarDefinitiva(){
-guardarHistorial();
+guardarUltimoEstado();
 estado.definitiva.actual=0;
 guardarEstado(); render();
 }
